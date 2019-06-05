@@ -3,15 +3,27 @@ from ruamel.yaml import YAML
 
 
 ## ============================================================
-## ----- Error messages ---------------------------------------
+## ----- Command strings --------------------------------------
 
-INVALID_NUMBER_ARGS = "Invalid number of arguments for command %s: %d"
-NO_FLAGS_OR_ARGS_SPECIFIED = "No flags or arguments specified for command: %s"
-INVALID_FLAG = "Invalid flag \'%s\' for command: %s"
+READ = "read"
+WRITE = "write"
+APPEND = "append"
+MERGE = "merge"
+DELETE = "delete"
+HELP = "help"
+OVERWRITE = "overwrite"
+
+
+## ============================================================
+## ----- Error message strings --------------------------------
+
+INVALID_NUMBER_ARGS = "%s: invalid number of arguments: %d"
+NO_FLAGS_OR_ARGS_SPECIFIED = "%s: no flags or arguments specified"
+INVALID_FLAG = "%s: invalid flag \'%s\'"
 FILE_NOT_FOUND = "File not found: %s"
 NO_COMMAND_PROVIDED = "No command provided"
 INVALID_COMMAND = "Invalid command: %s"
-INVALID_MERGE_OP = "Invalid merge operation: %s"
+INVALID_MERGE_OP = "Invalid {MERGE} operation: %s"
 INVALID_KEY = "Invalid key: %s"
 
 
@@ -24,34 +36,52 @@ def usage():
 
 Commands:
 
-  read file node
+  {READ} file node
     Print a node
 
-  write [-i] file node-path new-node
+    Example:
+      yaml-cli read foods.yml whole-foods.vegetables
+
+  {WRITE} [-i] file node-path new-node
     Add a new node, or overwrite existing node
 
     Flags:
       -i,   edit file in place
 
-  append [-i] file node-path new-node
-    Add a value to an existing node
+    Example:
+      yaml-cli write foods.yml whole-foods healthy "yes"
+
+  {APPEND} [-i] file node-path new-node
+    Append value(s) to an existing node
 
     Flags:
       -i,   edit file in place
 
-  merge [-i] append|overwrite file node-path other-file
+    Example:
+      yaml-cli append foods.yml whole-foods.fruit.exotic "- durian
+      - kumquat
+      - cupuaçu"
+
+
+  {MERGE} [-i] {APPEND}|{OVERWRITE} file node-path other-file
     Merge file with other-file
 
     Flags:
       -i,   edit file in place
 
-  delete [-i] file node-path
+    Example:
+      yaml-cli merge overwrite foods.yml processed-foods overwrite processed-foods.yml
+
+  {DELETE} [-i] file node-path
     Delete a node
 
     Flags:
       -i,   edit file in place
 
-  help
+    Example:
+      yaml-cli delete foods.yml processed-foods
+
+  {HELP}
     Get help
 """
   print (help)
@@ -68,7 +98,7 @@ def exit_no_flags_or_args_specified(command):
 
 
 def exit_invalid_flag(command, flag):
-  print(f"{INVALID_FLAG}" %(flag, command))
+  print(f"{INVALID_FLAG}" %(command, flag))
   sys.exit(2)
 
 
@@ -241,7 +271,7 @@ def merge():
       exit_invalid_flag(command, flag)
 
   op = args[0]
-  if op != "append" and op != "overwrite":
+  if op != f"{APPEND}" and op != f"{OVERWRITE}":
     exit_invalid_merge_op(op)
 
   filename = args[1]
@@ -259,10 +289,10 @@ def merge():
   except FileNotFoundError:
     exit_file_not_found(filename)
 
-  if op == "append":
+  if op == f"{APPEND}":
     node_ref = get_node_reference(config, node_path)
     node_ref += other
-  elif op == "overwrite":
+  elif op == f"{OVERWRITE}":
     node_ref = get_node_reference(config, node_path[0:-1])
     try:
       node_ref[node_path[-1]] = other
@@ -321,17 +351,17 @@ yaml.preserve_quotes = True
 
 command = sys.argv[1]
 
-if command == "read":
+if command == f"{READ}":
   read()
-elif command == "write":
+elif command == f"{WRITE}":
   write()
-elif command == "append":
+elif command == f"{APPEND}":
   append()
-elif command == "merge":
+elif command == f"{MERGE}":
   merge()
-elif command == "delete":
+elif command == f"{DELETE}":
   delete()
-elif command == "help":
+elif command == f"{HELP}":
   usage()
 else:
   exit_invalid_command(command)
