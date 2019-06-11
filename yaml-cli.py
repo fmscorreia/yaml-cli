@@ -25,6 +25,7 @@ NO_COMMAND_PROVIDED = "No command provided"
 INVALID_COMMAND = "Invalid command: %s"
 INVALID_MERGE_OP = "Invalid {MERGE} operation: %s"
 INVALID_KEY = "Invalid key: %s"
+INVALID_VALUE = "Invalid value: %s"
 
 
 ## ============================================================
@@ -72,14 +73,15 @@ Commands:
     Example:
       yaml-cli merge overwrite foods.yml processed-foods overwrite processed-foods.yml
 
-  {DELETE} [-i] file node-path
-    Delete a node
+  {DELETE} [-i] file node-path [value]
+    Delete a node or value from a sequence
 
     Flags:
       -i,   edit file in place
 
-    Example:
+    Examples:
       yaml-cli delete foods.yml processed-foods
+      yaml-cli delete foods.yml processed-foods.frozen "fishsticks"
 
   {HELP}
     Get help
@@ -124,6 +126,11 @@ def exit_invalid_merge_op(op):
 
 def exit_invalid_key(key):
   print(f"{INVALID_KEY}" %(key))
+  sys.exit(1)
+
+
+def exit_invalid_value(value):
+  print(f"{INVALID_VALUE}" %(value))
   sys.exit(1)
 
 
@@ -310,7 +317,7 @@ def delete():
   (flags, args) = argv_to_flags_args_tuple()
   inplace = False
 
-  if len(args) != 2:
+  if len(args) < 2 or len(args) > 3:
     exit_invalid_arg_number(command, len(args))
 
   for flag in flags:
@@ -321,6 +328,7 @@ def delete():
 
   filename = args[0]
   node_path = args[1].split(".")
+  value = args[2] if len(args) == 3 else None
 
   try:
     with open(filename) as f:
@@ -330,9 +338,14 @@ def delete():
 
   node_ref = get_node_reference(config, node_path[0:-1])
   try:
-    del node_ref[node_path[-1]]
+    if value is not None:
+      node_ref[node_path[-1]].remove(value)
+    else:
+      del node_ref[node_path[-1]]
   except KeyError:
     exit_invalid_key(node_path[-1])
+  except ValueError:
+    exit_invalid_value(value)
 
   if inplace:
     dump_aux_inplace(config, filename)
